@@ -1,0 +1,73 @@
+parameters:
+- name: useServiceConnectionForPush
+  type: boolean
+  default: true
+
+- name: publishFeedCredentials
+  type: string
+  default: ''
+
+- name: publishVstsFeed
+  type: string
+  default: ''
+
+- name: packagesToPush
+  type: string
+  # default: '*.nupkg'
+
+- name: nuGetFeedType
+  type: string
+  default: 'internal'
+
+- name: allowPackageConflicts
+  type: boolean
+  default: false
+
+- name: publishPackageMetadata
+  type: boolean
+  default: true
+
+- name: verbosityPush
+  type: string
+  default: 'Detailed'
+
+
+steps:
+- ${{ if eq( parameters.useServiceConnectionForPush, true) }}:
+  - ${{ if eq( parameters.nuGetFeedType, 'external') }}:
+    - task: NuGetCommand@2
+      displayName: Push packages to Github Nuget feed using Service Connection
+      inputs:
+        command: 'push'
+        packagesToPush: '${{ parameters.packagesToPush }}'
+        nuGetFeedType: '${{ parameters.nuGetFeedType }}'
+        publishFeedCredentials: '${{ parameters.publishFeedCredentials }}'
+        verbosityPush: '${{ parameters.verbosityPush }}'
+
+  - ${{ elseif eq( parameters.nuGetFeedType, 'internal') }}:
+    - task: NuGetCommand@2
+      displayName: Push packages to Target feed
+      inputs:
+        command: 'push'
+        packagesToPush: '${{ parameters.packagesToPush }}'
+        nuGetFeedType: '${{ parameters.nuGetFeedType }}'
+        publishVstsFeed: '${{ parameters.publishVstsFeed }}'
+        publishPackageMetadata: '${{ parameters.publishPackageMetadata }}'
+        allowPackageConflicts: '${{ parameters.allowPackageConflicts }}'
+        verbosityPush: '${{ parameters.verbosityPush }}' 
+
+- ${{ else }}:
+  - task: PowerShell@2
+    displayName: Push packages to Github Nuget feed using Github Pat
+    inputs:
+      targetType: 'inline'
+      script: |
+        Try { nuget push '${{ parameters.packagesToPush }}'  -Source github -ApiKey $(GitHubPATtoken) -ConfigFile nuget.config }
+        Finally { nuget sources remove -Name "github" -ConfigFile nuget.config }
+    
+
+
+
+
+
+    
